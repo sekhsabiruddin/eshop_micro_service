@@ -5,8 +5,8 @@ import {
   trackOtpRequests,
   validateRegistrationData,
 } from "../utils/auth.helper";
-import { prisma } from "../../../../packages/libs/prisma";
-import { ValidationError } from "../../../../packages";
+import { prisma } from "@packages/libs/prisma";
+import { ValidationError } from "@packages/errors";
 
 export const userRegistration = async (
   req: Request,

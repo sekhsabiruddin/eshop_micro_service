@@ -1,19 +1,13 @@
-/**
- * This is not a production server yet!
- * This is only a minimal backend to get started.
- */
-
 import express from "express";
 import cors from "cors";
-import { errorMiddleware } from "../../../packages/error-middleware";
+import { errorMiddleware } from "@packages/error-middleware";
 import router from "./routes/auth.router";
-
 import swaggerUi from "swagger-ui-express";
-
 const swaggerDocument = require("./swagger-output.json");
+
 const app = express();
 
-// Enable CORS for frontend origin 
+// Enable CORS for frontend origin
 app.use(
   cors({
     origin: "http://localhost:3000",
@@ -21,18 +15,28 @@ app.use(
     credentials: true,
   })
 );
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-app.get("/doc-json", (req, res) => {
+
+// Serve Swagger UI under /api/api-docs
+app.use("/api/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// Serve raw Swagger JSON under /api/doc-json
+app.get("/api/doc-json", (req, res) => {
   res.json(swaggerDocument);
 });
-//routes
+
+// API routes
 app.use("/api", router);
-// Register global error handler middleware
+
+// Global error handler
 app.use(errorMiddleware);
 
+// Start server
 const port = process.env.PORT || 6001;
 const server = app.listen(port, () => {
   console.log(`🚀 Listening at http://localhost:${port}`);
+  console.log(
+    `📚 Swagger UI available at http://localhost:${port}/api/api-docs`
+  );
 });
 
 server.on("error", console.error);
