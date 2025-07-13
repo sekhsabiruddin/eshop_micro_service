@@ -7,7 +7,9 @@
   },
   "host": "localhost:6001",
   "basePath": "/api",
-  "schemes": ["http"],
+  "schemes": [
+    "http"
+  ],
   "paths": {
     "/user-registration": {
       "post": {
@@ -20,13 +22,10 @@
               "type": "object",
               "properties": {
                 "name": {
-                  "example": "sabir"
+                  "example": "any"
                 },
                 "email": {
-                  "example": "sabir@gamil.com"
-                },
-                "password": {
-                  "example": "password"
+                  "example": "any"
                 }
               }
             }
@@ -35,6 +34,39 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/verify-user": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "example": "any"
+                },
+                "otp": {
+                  "example": "any"
+                },
+                "password": {
+                  "example": "any"
+                },
+                "name": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
           }
         }
       }
