@@ -15,6 +15,8 @@ app.use(
     credentials: true,
   })
 );
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Serve Swagger UI under /api/api-docs
 app.use("/api/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));

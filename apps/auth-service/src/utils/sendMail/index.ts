@@ -28,7 +28,8 @@ const renderEmailTemplate = async (
     "auth-service",
     "src",
     "utils",
-    "email-templates",
+    "sendMail",
+    "email-template",
     `${templateName}.ejs`
   );
 

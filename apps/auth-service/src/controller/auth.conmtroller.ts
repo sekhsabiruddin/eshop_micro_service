@@ -10,7 +10,7 @@ import {
 import { prisma } from "@packages/libs/prisma";
 import { AuthError, ValidationError } from "@packages/errors";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import jwt, { JsonWebTokenError } from "jsonwebtoken";
 import { setCookie } from "../utils/cookies/setCookie";
 export const userRegistration = async (
   req: Request,
@@ -18,9 +18,10 @@ export const userRegistration = async (
   next: NextFunction
 ) => {
   try {
+    console.log("User registration data:", req.body);
     validateRegistrationData(req.body, "user");
 
-    const { name, email } = req.body;
+    const { name, email, password } = req.body;
 
     const existingUser = await prisma.users.findUnique({
       where: { email },
@@ -185,4 +186,70 @@ export const verifyForgotPasswordOtp = async (
   next: NextFunction
 ) => {
   await verifyForgetPasswordOtp(req, res, next);
+};
+
+export const refreshToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // 1. Get refresh token from cookie
+    const refreshToken = req.cookies.refresh_token;
+    if (!refreshToken) {
+      throw new AuthError("Unauthorized! No refresh token.");
+    }
+
+    // 2. Decode the token
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.REFRESH_TOKEN_SECRET as string
+    ) as { id: string; role: string };
+
+    // 3. Validate decoded token
+    if (!decoded || !decoded.id || !decoded.role) {
+      return next(new JsonWebTokenError("Forbidden! Invalid refresh token."));
+    }
+
+    // 4. Find user/seller based on role
+    let user;
+    if (decoded.role === "user") {
+      user = await prisma.users.findUnique({ where: { id: decoded.id } });
+    }
+    // 5. If no account found
+    if (!user) {
+      return next(new AuthError("Forbidden! User/Seller not found"));
+    }
+
+    // 6. Generate new access token
+    const newAccessToken = jwt.sign(
+      { id: decoded.id, role: decoded.role },
+      process.env.ACCESS_TOKEN_SECRET as string,
+      { expiresIn: "15m" }
+    );
+
+    // 7. Set the new token cookie
+    res.cookie("access_token", newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    // 8. Return success
+    return res.status(201).json({ success: true });
+  } catch (error) {
+    return next(error);
+  }
+};
+export const getUser = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const user = req.user;
+
+    res.status(201).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
