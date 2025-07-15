@@ -11,7 +11,7 @@ import rateLimit from "express-rate-limit";
 
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
-
+import initializeConfig from "./libs/initiazeSiteConfig";
 const app = express();
 
 // CORS setup
@@ -57,8 +57,16 @@ app.use("/", proxy("http://localhost:6001"));
 
 // Start server
 const port = process.env.PORT || 8080;
-const server = app.listen(port, () => {
+
+const server = app.listen(port, async () => {
   console.log(`🚀 Listening at http://localhost:${port}/api`);
+
+  try {
+    await initializeConfig(); // ✅ await the async function
+    console.log("✅ Site config initialized successfully!");
+  } catch (error) {
+    console.error("❌ Failed to initialize site config:", error);
+  }
 });
 
 server.on("error", console.error);

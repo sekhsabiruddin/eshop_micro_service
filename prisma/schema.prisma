@@ -74,3 +74,13 @@ model sellers {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
+
+model SiteConfig {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  categories    String[]
+  subCategories Json
+
+  @@map("site_config") // optional, maps DB collection name
+}
+
+
