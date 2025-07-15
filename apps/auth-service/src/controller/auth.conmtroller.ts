@@ -119,6 +119,8 @@ export const loginUser = async (
     if (!isMatch) {
       return next(new AuthError("Invalid email or password."));
     }
+    res.clearCookie("seller_access_token");
+    res.clearCookie("seller_refresh_token");
 
     // Generate JWT token and refresh token
     const accessToken = jwt.sign(
@@ -195,9 +197,13 @@ export const refreshToken = async (
 ) => {
   try {
     // 1. Get refresh token from cookie
-    const refreshToken = req.cookies.refresh_token;
+    const refreshToken =
+      req.cookies["refresh_token"] ||
+      req.cookies["seller-refresh-token"] ||
+      req.headers.authorization?.split(" ")[1];
+
     if (!refreshToken) {
-      throw new AuthError("Unauthorized! No refresh token.");
+      return new ValidationError("Unauthorized! No refresh token.");
     }
 
     // 2. Decode the token
@@ -212,12 +218,20 @@ export const refreshToken = async (
     }
 
     // 4. Find user/seller based on role
-    let user;
+    let account;
     if (decoded.role === "user") {
-      user = await prisma.users.findUnique({ where: { id: decoded.id } });
+      account = await prisma.users.findUnique({
+        where: { id: decoded.id },
+      });
+    } else if (decoded.role === "seller") {
+      account = await prisma.sellers.findUnique({
+        where: { id: decoded.id },
+        include: { shop: true },
+      });
     }
+
     // 5. If no account found
-    if (!user) {
+    if (!account) {
       return next(new AuthError("Forbidden! User/Seller not found"));
     }
 
@@ -235,6 +249,12 @@ export const refreshToken = async (
       sameSite: "strict",
     });
 
+    if (decoded.role === "user") {
+      setCookie(res, "access_token", newAccessToken);
+    } else if (decoded.role === "seller") {
+      setCookie(res, "seller_access_token", newAccessToken);
+    }
+
     // 8. Return success
     return res.status(201).json({ success: true });
   } catch (error) {
@@ -248,6 +268,190 @@ export const getUser = async (req: any, res: Response, next: NextFunction) => {
     res.status(201).json({
       success: true,
       user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const registerSeller = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    validateRegistrationData(req.body, "seller");
+
+    const { name, email } = req.body;
+
+    const existingSeller = await prisma.sellers.findUnique({
+      where: { email },
+    });
+
+    if (existingSeller) {
+      throw new ValidationError("Seller already exists with this email!");
+    }
+
+    await checkOtpRestrictions(email, next);
+    await trackOtpRequests(email, next);
+    await sendOtp(name, email, "seller-activation");
+
+    res.status(200).json({
+      message: "OTP sent to email. Please verify your account.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifySeller = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email, otp, password, name, phone_number, country } = req.body;
+
+    if (!email || !otp || !password || !name || !phone_number || !country) {
+      return next(new ValidationError("All fields are required!"));
+    }
+
+    const existingSeller = await prisma.sellers.findUnique({
+      where: { email },
+    });
+
+    if (existingSeller) {
+      return next(
+        new ValidationError("Seller already exists with this email!")
+      );
+    }
+
+    await verifyOtp(email, otp, next);
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const seller = await prisma.sellers.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        country,
+        phone_number,
+      },
+    });
+
+    res
+      .status(201)
+      .json({ seller, message: "Seller registered successfully!" });
+  } catch (error) {
+    next(error);
+  }
+};
+export const createShop = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { name, bio, address, opening_hours, website, category, sellerId } =
+      req.body;
+
+    if (!name || !address || !sellerId || !opening_hours || !category) {
+      return next(new ValidationError("All fields are required!"));
+    }
+
+    const shopData: any = {
+      name,
+      bio,
+      address,
+      opening_hours,
+      category,
+      sellerId,
+    };
+
+    if (website && website.trim() !== "") {
+      shopData.website = website;
+    }
+
+    const shop = await prisma.shops.create({
+      data: shopData,
+    });
+
+    res.status(201).json({ shop, message: "Shop created successfully!" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const loginSeller = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return next(new ValidationError("Email and password are required!"));
+    }
+
+    const seller = await prisma.sellers.findUnique({
+      where: { email },
+    });
+
+    if (!seller) {
+      return next(new ValidationError("Invalid email or password!"));
+    }
+
+    const isMatch = await bcrypt.compare(password, seller.password!);
+    if (!isMatch) {
+      return next(new ValidationError("Invalid email or password!"));
+    }
+    res.clearCookie("access_token");
+    res.clearCookie("refresh_token");
+
+    // Generate tokens
+    const accessToken = jwt.sign(
+      { id: seller.id, role: "seller" },
+      process.env.ACCESS_TOKEN_SECRET as string,
+      { expiresIn: "15m" }
+    );
+
+    const refreshToken = jwt.sign(
+      { id: seller.id, role: "seller" },
+      process.env.REFRESH_TOKEN_SECRET as string,
+      { expiresIn: "7d" }
+    );
+
+    // Store tokens in cookies
+    setCookie(res, "seller-refresh-token", refreshToken);
+    setCookie(res, "seller-access-token", accessToken);
+
+    // Response
+    res.status(200).json({
+      message: "Login successful!",
+      seller: {
+        id: seller.id,
+        email: seller.email,
+        name: seller.name,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSeller = async (
+  req: any, // Ideally, use a custom type with seller attached
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const seller = req.seller;
+
+    res.status(201).json({
+      success: true,
+      seller,
     });
   } catch (error) {
     next(error);
