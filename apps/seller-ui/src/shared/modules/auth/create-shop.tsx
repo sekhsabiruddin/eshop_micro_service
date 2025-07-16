@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { shopCategories } from "apps/seller-ui/src/app/utils/categories";
 import axios from "axios";
 import { useForm } from "react-hook-form";
-
+import { useRouter } from "next/navigation";
 const CreateShop = ({
   sellerId,
   setActiveStep,
@@ -10,8 +10,8 @@ const CreateShop = ({
   sellerId: string;
   setActiveStep: (step: number) => void;
 }) => {
-  console.log("Seller ID:", sellerId);
-  
+  const router = useRouter();
+
   const {
     register,
     handleSubmit,
@@ -27,11 +27,12 @@ const CreateShop = ({
       return response.data;
     },
     onSuccess: () => {
-      setActiveStep(3);
+      router.push("/login");
     },
   });
 
   const onSubmit = async (data: any) => {
+    console.log("data,  ", data, "sellerId", sellerId);
     const shopData = { ...data, sellerId };
     shopCreateMutation.mutate(shopData);
   };

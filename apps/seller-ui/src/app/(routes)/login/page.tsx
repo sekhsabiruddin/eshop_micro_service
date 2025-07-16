@@ -29,14 +29,18 @@ const Login = () => {
 
   const loginMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      const response = await axios.post("/your-login-endpoint", data, {
-        withCredentials: true,
-      });
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/login-seller`,
+        data,
+        {
+          withCredentials: true,
+        }
+      );
       return response.data;
     },
     onSuccess: (data) => {
       setServerError(null);
-      router.push("/");
+      router.push("/dashboard");
     },
     onError: (error: AxiosError) => {
       const errorMessage =
@@ -47,8 +51,7 @@ const Login = () => {
   });
 
   const onSubmit = (data: FormData) => {
-    console.log("Form submitted:", data);
-    // TODO: Replace with API call
+    loginMutation.mutate(data);
   };
 
   return (

@@ -356,29 +356,36 @@ export const createShop = async (
     const { name, bio, address, opening_hours, website, category, sellerId } =
       req.body;
 
-    if (!name || !address || !sellerId || !opening_hours || !category) {
-      return next(new ValidationError("All fields are required!"));
+    if (!name || !address || !opening_hours || !category || !sellerId) {
+      return next(new Error("All required fields must be filled."));
     }
 
-    const shopData: any = {
-      name,
-      bio,
-      address,
-      opening_hours,
-      category,
-      sellerId,
-    };
-
-    if (website && website.trim() !== "") {
-      shopData.website = website;
-    }
-
+    // Step 1: Create the shop
     const shop = await prisma.shops.create({
-      data: shopData,
+      data: {
+        name,
+        bio,
+        address,
+        opening_hours,
+        category,
+        website: website?.trim() || undefined,
+      },
     });
 
-    res.status(201).json({ shop, message: "Shop created successfully!" });
+    // Step 2: Connect seller to shop
+    await prisma.sellers.update({
+      where: { id: sellerId },
+      data: {
+        shopId: shop.id,
+      },
+    });
+
+    res.status(201).json({
+      message: "Shop created and seller linked!",
+      shop,
+    });
   } catch (error) {
+    console.error("❌ Shop creation failed:", error);
     next(error);
   }
 };
