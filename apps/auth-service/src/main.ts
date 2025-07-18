@@ -3,6 +3,7 @@ import cors from "cors";
 import { errorMiddleware } from "@packages/error-middleware";
 import router from "./routes/auth.router";
 import swaggerUi from "swagger-ui-express";
+import cookieParser from "cookie-parser";
 const swaggerDocument = require("./swagger-output.json");
 
 const app = express();
@@ -17,7 +18,7 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.use(cookieParser())
 // Serve Swagger UI under /api/api-docs
 app.use("/api/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 

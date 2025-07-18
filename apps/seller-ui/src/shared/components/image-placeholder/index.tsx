@@ -1,9 +1,7 @@
-// apps/seller-ui/src/shared/components/image-placeholder/index.tsx
-
 "use client";
 import { Pencil, WandSparkles, X } from "lucide-react";
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface ImagePlaceHolderProps {
   size: string;
@@ -13,6 +11,9 @@ interface ImagePlaceHolderProps {
   defaultImage?: string | null;
   setOpenImageModal: (open: boolean) => void;
   index?: number;
+  setSelectedImage: (url: string) => void;
+  images?: any[];
+  pictureUploadingLoader?: boolean;
 }
 
 const ImagePlaceHolder: React.FC<ImagePlaceHolderProps> = ({
@@ -23,16 +24,25 @@ const ImagePlaceHolder: React.FC<ImagePlaceHolderProps> = ({
   defaultImage = null,
   setOpenImageModal,
   index = 0,
+  setSelectedImage,
+  images = [],
+  pictureUploadingLoader,
 }) => {
   const [imagePreview, setImagePreview] = useState<string | null>(defaultImage);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setImagePreview(URL.createObjectURL(file));
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
       onImageChange(file, index);
     }
   };
+
+  const uploadedImage = images[index];
+
+  // Fallback to uploaded image from backend
+  const imageToShow = imagePreview || uploadedImage?.file_url;
 
   return (
     <div
@@ -49,9 +59,10 @@ const ImagePlaceHolder: React.FC<ImagePlaceHolderProps> = ({
       />
 
       {/* ICONS */}
-      {imagePreview ? (
+      {imageToShow ? (
         <>
           <button
+            disabled={pictureUploadingLoader}
             type="button"
             onClick={() => onRemove?.(index!)}
             className="absolute top-3 right-3 p-2 rounded bg-red-600 shadow-lg text-white z-10"
@@ -60,7 +71,14 @@ const ImagePlaceHolder: React.FC<ImagePlaceHolderProps> = ({
           </button>
 
           <button
-            onClick={() => setOpenImageModal(true)}
+            disabled={pictureUploadingLoader}
+            type="button"
+            onClick={() => {
+              if (uploadedImage?.file_url || imagePreview) {
+                setSelectedImage(uploadedImage?.file_url || imagePreview);
+                setOpenImageModal(true);
+              }
+            }}
             className="absolute top-3 right-[70px] p-2 rounded bg-blue-500 shadow-lg text-white z-10"
           >
             <WandSparkles size={16} />
@@ -76,9 +94,9 @@ const ImagePlaceHolder: React.FC<ImagePlaceHolderProps> = ({
       )}
 
       {/* IMAGE or PLACEHOLDER TEXT */}
-      {imagePreview ? (
+      {imageToShow ? (
         <Image
-          src={imagePreview}
+          src={imageToShow}
           alt="uploaded"
           fill
           className="object-cover rounded-lg z-0"

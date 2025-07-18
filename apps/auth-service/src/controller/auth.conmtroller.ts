@@ -85,11 +85,6 @@ export const verifyUser = async (
       return next(new ValidationError("Invalid or expired OTP!"));
     }
 
-    // Optional: Create the user after OTP verification
-    // await prisma.users.create({
-    //   data: { email, password: hashedPassword, name },
-    // });
-
     res.status(201).json({ message: "User verified successfully!" });
   } catch (error) {
     return next(error);
@@ -190,39 +185,107 @@ export const verifyForgotPasswordOtp = async (
   await verifyForgetPasswordOtp(req, res, next);
 };
 
+// export const refreshToken = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     // 1. Get refresh token from cookie
+//     const refreshToken =
+//       req.cookies["refresh_token"] ||
+//       req.cookies["seller-refresh-token"] ||
+//       req.headers.authorization?.split(" ")[1];
+
+//     if (!refreshToken) {
+//       return new ValidationError("Unauthorized! No refresh token.");
+//     }
+
+//     // 2. Decode the token
+//     const decoded = jwt.verify(
+//       refreshToken,
+//       process.env.REFRESH_TOKEN_SECRET as string
+//     ) as { id: string; role: string };
+
+//     // 3. Validate decoded token
+//     if (!decoded || !decoded.id || !decoded.role) {
+//       return next(new JsonWebTokenError("Forbidden! Invalid refresh token."));
+//     }
+
+//     // 4. Find user/seller based on role
+//     let account;
+//     if (decoded.role === "user") {
+//       account = await prisma.users.findUnique({
+//         where: { id: decoded.id },
+//       });
+//     } else if (decoded.role === "seller") {
+//       account = await prisma.sellers.findUnique({
+//         where: { id: decoded.id },
+//         include: { shop: true },
+//       });
+//     }
+
+//     // 5. If no account found
+//     if (!account) {
+//       return next(new AuthError("Forbidden! User/Seller not found"));
+//     }
+
+//     // 6. Generate new access token
+//     const newAccessToken = jwt.sign(
+//       { id: decoded.id, role: decoded.role },
+//       process.env.ACCESS_TOKEN_SECRET as string,
+//       { expiresIn: "15m" }
+//     );
+
+//     // 7. Set the new token cookie
+//     res.cookie("access_token", newAccessToken, {
+//       httpOnly: true,
+//       secure: process.env.NODE_ENV === "production",
+//       sameSite: "strict",
+//     });
+
+//     if (decoded.role === "user") {
+//       setCookie(res, "access_token", newAccessToken);
+//     } else if (decoded.role === "seller") {
+//       setCookie(res, "seller_access_token", newAccessToken);
+//     }
+
+//     // 8. Return success
+//     return res.status(201).json({ success: true });
+//   } catch (error) {
+//     return next(error);
+//   }
+// };
 export const refreshToken = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // 1. Get refresh token from cookie
+    // 1. Get refresh token from cookie or header
     const refreshToken =
       req.cookies["refresh_token"] ||
       req.cookies["seller-refresh-token"] ||
       req.headers.authorization?.split(" ")[1];
 
     if (!refreshToken) {
-      return new ValidationError("Unauthorized! No refresh token.");
+      return next(new ValidationError("Unauthorized! No refresh token."));
     }
 
     // 2. Decode the token
     const decoded = jwt.verify(
       refreshToken,
       process.env.REFRESH_TOKEN_SECRET as string
-    ) as { id: string; role: string };
+    ) as { id: string; role: "user" | "seller" };
 
-    // 3. Validate decoded token
     if (!decoded || !decoded.id || !decoded.role) {
       return next(new JsonWebTokenError("Forbidden! Invalid refresh token."));
     }
 
-    // 4. Find user/seller based on role
+    // 3. Find user or seller
     let account;
     if (decoded.role === "user") {
-      account = await prisma.users.findUnique({
-        where: { id: decoded.id },
-      });
+      account = await prisma.users.findUnique({ where: { id: decoded.id } });
     } else if (decoded.role === "seller") {
       account = await prisma.sellers.findUnique({
         where: { id: decoded.id },
@@ -230,37 +293,30 @@ export const refreshToken = async (
       });
     }
 
-    // 5. If no account found
     if (!account) {
-      return next(new AuthError("Forbidden! User/Seller not found"));
+      return next(new AuthError("Forbidden! Account not found."));
     }
 
-    // 6. Generate new access token
+    // 4. Generate new access token
     const newAccessToken = jwt.sign(
       { id: decoded.id, role: decoded.role },
       process.env.ACCESS_TOKEN_SECRET as string,
       { expiresIn: "15m" }
     );
 
-    // 7. Set the new token cookie
-    res.cookie("access_token", newAccessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
+    // 5. Set cookie based on role (only once!)
+    const cookieName =
+      decoded.role === "user" ? "access_token" : "seller-access-token";
 
-    if (decoded.role === "user") {
-      setCookie(res, "access_token", newAccessToken);
-    } else if (decoded.role === "seller") {
-      setCookie(res, "seller_access_token", newAccessToken);
-    }
+    setCookie(res, cookieName, newAccessToken);
 
-    // 8. Return success
+    // 6. Send success response
     return res.status(201).json({ success: true });
   } catch (error) {
     return next(error);
   }
 };
+
 export const getUser = async (req: any, res: Response, next: NextFunction) => {
   try {
     const user = req.user;

@@ -2,14 +2,17 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Launch Program (ts-node)",
       "type": "node",
       "request": "launch",
-      "name": "Debug Auth Service",
-      "skipFiles": ["<node_internals>/**"],
-      "program": "${workspaceFolder}/apps/auth-service/src/main.ts", // ✅ Adjust path
-      "preLaunchTask": "tsc: build - auth-service", // optional if using precompiled
-      "outFiles": ["${workspaceFolder}/apps/auth-service/dist/**/*.js"], // ✅ Correct output
-      "cwd": "${workspaceFolder}/apps/auth-service"
+      "runtimeArgs": [
+        "-r",
+        "ts-node/register",
+        "-r",
+        "tsconfig-paths/register"
+      ],
+      "args": ["${workspaceFolder}/apps/auth-service/src/main.ts"],
+      "skipFiles": ["<node_internals>/**"]
     }
   ]
 }

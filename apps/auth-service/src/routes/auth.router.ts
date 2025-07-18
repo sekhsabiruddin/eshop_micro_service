@@ -3,7 +3,7 @@ import {
   loginUser,
   userRegistration,
   verifyUser,
-  verifyForgotPasswordOtp,
+  // verifyForgotPasswordOtp,
   verifyUserForgotPassword,
   refreshToken,
   getUser,
@@ -13,23 +13,30 @@ import {
   loginSeller,
   getSeller,
 } from "../controller/auth.conmtroller";
-import { resetUserPassword } from "../utils/auth.helper";
+// import { resetUserPassword } from "../utils/auth.helper";
 import isAuthenticated from "@packages/middleware/isAuthenticate";
 import { isSeller } from "@packages/middleware/authorizeRoles";
 
 const router: Router = express.Router();
+
+// Public user routes
 router.post("/user-registration", userRegistration);
 router.post("/verify-user", verifyUser);
 router.post("/login-user", loginUser);
-router.post("/refresh-token", refreshToken);
-router.get("/logged-in-user", isAuthenticated, getUser);
-// router.post("/forgot-password-user", userForgotPassword);
-router.post("/reset-password-user", resetUserPassword);
+router.post("/refresh-token", isAuthenticated, refreshToken);
 router.post("/verify-forgot-password-user", verifyUserForgotPassword);
+router.post("/reset-password-user", verifyUserForgotPassword); // ✅ Assuming this is OTP-based
+router.post("/create-shop", createShop);
+// Protected user route
+
+// Public seller routes
 router.post("/seller-registration", registerSeller);
 router.post("/verify-seller", verifySeller);
-router.post("/create-shop", createShop);
 router.post("/login-seller", loginSeller);
+
+// Protected seller routes
+
+// router.get("/logged-in-user", isAuthenticated, getUser);
 router.get("/logged-in-seller", isAuthenticated, isSeller, getSeller);
 
 export default router;

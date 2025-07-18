@@ -5,10 +5,11 @@ import { prisma } from "@packages/libs/prisma"; // Adjust the import based on yo
 const isAuthenticated = async (req: any, res: Response, next: NextFunction) => {
   try {
     const token =
-      req.cookies["access_token"] ||
-      req.cookies["seller-access-token"] ||
+      req.cookies["seller-access-token"] || // ✅ Correct for sellers
+      req.cookies["access_token"] || // ✅ Fallback for users
       req.headers.authorization?.split(" ")[1];
 
+    console.log("token", token);
     if (!token) {
       return res.status(401).json({ message: "Unauthorized! Token missing." });
     }
@@ -47,7 +48,8 @@ const isAuthenticated = async (req: any, res: Response, next: NextFunction) => {
     req.role = decoded.role;
 
     return next();
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Authentication error:", error.message);
     return res.status(401).json({
       message: "Unauthorized! Token expired or invalid.",
     });
