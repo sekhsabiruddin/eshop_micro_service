@@ -4,15 +4,31 @@ import Ratings from "../ratings";
 import { Eye, Heart, ShoppingBag } from "lucide-react";
 import ProductDetailsCard from "./product-details-card";
 import Image from "next/image";
+import { useStore } from "apps/user-ui/src/store";
+import useUser from "apps/user-ui/src/hooks/useUser";
+import useLocationTracking from "apps/user-ui/src/hooks/useLocationTracking";
+import useDeviceTracking from "apps/user-ui/src/hooks/useDeviceTracking";
+
 type ProductCardProps = {
   product: any;
   isEvent?: boolean;
 };
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, isEvent }) => {
-  console.log("...ProductCard..", product);
   const [timeLeft, setTimeLeft] = useState("");
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
+  const { user } = useUser();
+  const location = useLocationTracking();
+  const deviceInfo = useDeviceTracking();
+  const addToCart = useStore((state: any) => state.addToCart);
+  const removeFromCart = useStore((state: any) => state.removeFromCart);
+  const addToWishlist = useStore((state: any) => state.addToWishlist);
+  const removeFromWishlist = useStore((state: any) => state.removeFromWishlist);
+  const wishlist = useStore((state: any) => state.wishlist);
+  const isWishlisted = wishlist.some((item: any) => item.id === product.id);
+
+  const cart = useStore((state: any) => state.cart);
+  const isInCart = cart.some((item: any) => item.id === product.id);
   useEffect(() => {
     if (isEvent && product?.ending_date) {
       const interval = setInterval(() => {
@@ -114,8 +130,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, isEvent }) => {
           <Heart
             className="cursor-pointer hover:scale-110 transition"
             size={20}
-            fill="red"
-            stroke="red"
+            stroke={isWishlisted ? "red" : "#4B5563"}
+            fill={isWishlisted ? "red" : "transparent"}
+            onClick={() =>
+              isWishlisted
+                ? removeFromWishlist(product.id, user, location, deviceInfo)
+                : addToWishlist(
+                    { ...product, quantity: 1 },
+                    user,
+                    location,
+                    deviceInfo
+                  )
+            }
           />
         </div>
         <div className="bg-white rounded-full p-[6px] shadow-md">
@@ -129,6 +155,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, isEvent }) => {
           <ShoppingBag
             className="cursor-pointer text-gray-600 hover:scale-110 transition"
             size={20}
+            onClick={() =>
+              isInCart
+                ? removeFromCart(product.id, user, location, deviceInfo)
+                : addToCart(
+                    { ...product, quantity: 1 },
+                    user,
+                    location,
+                    deviceInfo
+                  )
+            }
           />
         </div>
       </div>

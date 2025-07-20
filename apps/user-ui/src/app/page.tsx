@@ -22,7 +22,7 @@ const Page = () => {
 
   // Optionally alias the data as "products"
   const products = data ?? [];
-  console.log("My product", products);
+
   const { data: latestProducts } = useQuery({
     queryKey: ["latest-products"],
     queryFn: async () => {
@@ -62,7 +62,6 @@ const Page = () => {
             ))}
           </div>
         )}
-        {/* <ProductCard key={products.id} product={products} /> */}
       </div>
     </div>
   );

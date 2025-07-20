@@ -11,11 +11,14 @@ import React, { useEffect, useState } from "react";
 import { navItems, NavItemsTypes } from "../../../configs/consotant";
 import Link from "next/link";
 import useUser from "apps/user-ui/src/hooks/useUser";
+import { useStore } from "apps/user-ui/src/store";
 
 const HeaderBottom = () => {
   const [show, setShow] = useState(false);
   const [isSticky, setIsSticky] = useState(false);
   const { user, isLoading } = useUser();
+  const wishlist = useStore((state: any) => state.wishlist);
+  const cart = useStore((state: any) => state.cart);
   useEffect(() => {
     const handleScroll = () => {
       setIsSticky(window.scrollY > 100);
@@ -135,7 +138,9 @@ const HeaderBottom = () => {
               absolute top-[-10px] right-[-10px] 
               "
                 >
-                  <span className="text-white font-medium text-sm">0</span>
+                  <span className="text-white font-medium text-sm">
+                    {wishlist?.length}
+                  </span>
                 </div>
               </Link>
 
@@ -146,7 +151,9 @@ const HeaderBottom = () => {
               absolute top-[-10px] right-[-10px] 
               "
                 >
-                  <span className="text-white font-medium text-sm">0</span>
+                  <span className="text-white font-medium text-sm">
+                    {cart?.length}
+                  </span>
                 </div>
               </Link>
             </div>

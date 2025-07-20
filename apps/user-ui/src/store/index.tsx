@@ -1,5 +1,3 @@
-
-
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -44,15 +42,14 @@ type Store = {
 
 // Zustand store with persist
 export const useStore = create<Store>()(
-  persist(
+  persist<Store>(
     (set, get) => ({
       cart: [],
       wishlist: [],
 
       addToCart: (product, user, location, deviceInfo) => {
         set((state) => {
-          const existing = state.cart?.find((item) => item.id === product.id);
-
+          const existing = state.cart.find((item) => item.id === product.id);
           if (existing) {
             return {
               cart: state.cart.map((item) =>
@@ -62,7 +59,6 @@ export const useStore = create<Store>()(
               ),
             };
           }
-
           return {
             cart: [...state.cart, { ...product, quantity: 1 }],
           };
@@ -70,22 +66,28 @@ export const useStore = create<Store>()(
       },
 
       removeFromCart: (id, user, location, deviceInfo) => {
-        set({ cart: get().cart.filter((item) => item.id !== id) });
+        set({
+          cart: get().cart.filter((item) => item.id !== id),
+        });
       },
 
       addToWishlist: (product, user, location, deviceInfo) => {
         const existing = get().wishlist.find((item) => item.id === product.id);
         if (!existing) {
-          set({ wishlist: [...get().wishlist, product] });
+          set({
+            wishlist: [...get().wishlist, product],
+          });
         }
       },
 
       removeFromWishlist: (id, user, location, deviceInfo) => {
-        set({ wishlist: get().wishlist.filter((item) => item.id !== id) });
+        set({
+          wishlist: get().wishlist.filter((item) => item.id !== id),
+        });
       },
     }),
     {
-      name: "store-storage", // localStorage key
+      name: "store-storage",
     }
   )
 );
