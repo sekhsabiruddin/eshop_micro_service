@@ -69,7 +69,7 @@ const ProductList = () => {
         header: "Image",
         cell: ({ row }: any) => (
           <Image
-            src={row.original.images[0]}
+            src={row.original.images[0].url}
             alt={row.original.title}
             width={200}
             height={200}

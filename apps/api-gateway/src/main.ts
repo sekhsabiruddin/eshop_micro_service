@@ -49,19 +49,20 @@ app.use("/assets", express.static(path.join(__dirname, "assets")));
 
 // Proxy to downstream service (e.g., auth-service on port 6001)
 // app.use("/product", proxy("http://localhost:6002"));
-app.use(
-  "/product",
-  proxy("http://localhost:6002", {
-    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-      proxyReqOpts.headers = {
-        ...proxyReqOpts.headers,
-        // Explicitly forward the cookie header
-        Cookie: srcReq.headers.cookie || "",
-      };
-      return proxyReqOpts;
-    },
-  })
-);
+// app.use(
+//   "/product",
+//   proxy("http://localhost:6002", {
+//     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+//       proxyReqOpts.headers = {
+//         ...proxyReqOpts.headers,
+//         // Explicitly forward the cookie header
+//         Cookie: srcReq.headers.cookie || "",
+//       };
+//       return proxyReqOpts;
+//     },
+//   })
+// );
+app.use("/product", proxy("http://localhost:6002"));
 
 app.use("/", proxy("http://localhost:6001"));
 

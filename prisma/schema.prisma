@@ -8,16 +8,17 @@ datasource db {
 }
 
 model images {
-  id      String @id @default(auto()) @map("_id") @db.ObjectId
-  file_id String
-  url     String
-
-  userId String? @unique @db.ObjectId
-  shopId String? @unique @db.ObjectId
-
-  users users? @relation(fields: [userId], references: [id])
-  shops shops? @relation(fields: [shopId], references: [id])
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  file_id    String
+  url        String
+  userId     String?  @unique @db.ObjectId
+  shopId     String?  @unique @db.ObjectId
+  users      users?   @relation(fields: [userId], references: [id])
+  shops      shops?   @relation(fields: [shopId], references: [id])
+  productId  String   @db.ObjectId // Renamed for clarity
+  product    products @relation(fields: [productId], references: [id])
 }
+
 
 model users {
   id          String        @id @default(auto()) @map("_id") @db.ObjectId
@@ -96,20 +97,21 @@ model shops {
   ratings       Float         @default(0)
   reviews       shopReviews[]
   sellers       sellers[]
-  products      products[] // ✅ This now works because products model exists below
+  products      products[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
 
+
 model products {
-  id                    String        @id @default(auto()) @map("_id") @db.ObjectId
+  id                    String       @id @default(auto()) @map("_id") @db.ObjectId
   title                 String
-  slug                  String        @unique
+  slug                  String       @unique
   category              String
   subCategory           String
   short_description     String
   detailed_description  String
-  images                String[]
+  images                images[] 
   video_url             String?
   tags                  String[]
   brand                 String?
@@ -120,18 +122,19 @@ model products {
   stock                 Int
   sale_price            Float
   regular_price         Float
-  ratings               Float         @default(5)
+  ratings               Float        @default(5)
   warranty              String?
   custom_specifications Json?
   custom_properties     Json
-  isDeleted             Boolean?      @default(false)
+  isDeleted             Boolean?     @default(false)
   cashOnDelivery        String?
-  discount_codes        String[]      @db.ObjectId
+  discount_codes        String[]     @db.ObjectId
   status                productStatus @default(Active)
   deletedAt             DateTime?
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  shopId                String       @db.ObjectId
+  shops                 shops        @relation(fields: [shopId], references: [id])
+  totalSales Int @default(0)
 
-  shopId String @db.ObjectId
-  Shop   shops  @relation(fields: [shopId], references: [id]) // ✅ Two-way relation
 }

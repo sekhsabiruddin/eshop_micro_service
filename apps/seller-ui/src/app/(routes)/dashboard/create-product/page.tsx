@@ -56,29 +56,24 @@ const Page = () => {
       setLoading(true);
 
       const validImages = images
-        .filter((img) => img && img.fileId && img.file_url)
+        .filter((img) => img?.fileId && img?.file_url)
         .map((img) => ({
-          fileId: img.fileId,
-          file_url: img.file_url,
+          file_id: img.fileId,
+          url: img.file_url,
         }));
 
-      // 🚫 If no images, show error toast and stop
       if (validImages.length === 0) {
         toast.error("Please upload at least one image");
         setLoading(false);
         return;
       }
 
-      // 🧩 Attach images to the form data
       const payload = {
         ...data,
-        images: validImages,
+        images: validImages, // ✅ Matches Prisma JSON structure
       };
-
-      // ✅ Send POST request to backend API
+      console.log("payload", payload);
       await axiosInstance.post("/product/api/create-product", payload);
-
-      // ✅ Redirect on success
       router.push("/dashboard/all-products");
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Something went wrong!");

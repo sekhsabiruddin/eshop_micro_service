@@ -1,7 +1,71 @@
+"use client";
 import React from "react";
-
-const page = () => {
-  return <div className="h-[200vh] ">page</div>;
+import Hero from "./shared/modules/hero";
+import SectionTitle from "./shared/components/section/section-tite";
+import axiosInstance from "../utils/axiosinstance";
+import { useQuery } from "@tanstack/react-query";
+import ProductCard from "./shared/components/card/product-card";
+const fetchProducts = async () => {
+  const res = await axiosInstance.get(
+    "/product/api/get-all-products?page=1&limit=10"
+  );
+  console.log("All product in frontend components===>", res.data.products);
+  return res.data.products;
 };
 
-export default page;
+const Page = () => {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["products"],
+    queryFn: fetchProducts,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+
+  // Optionally alias the data as "products"
+  const products = data ?? [];
+  console.log("My product", products);
+  const { data: latestProducts } = useQuery({
+    queryKey: ["latest-products"],
+    queryFn: async () => {
+      const res = await axiosInstance.get(
+        "/product/api/get-all-products?page=1&limit=10&type=latest"
+      );
+
+      return res.data.products;
+    },
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+  return (
+    <div>
+      {/* Hero section start here  */}
+      <Hero />
+      {/* Hero section end here  */}
+      {/* section title start  here  */}
+      <div className="md:w-[80%] w-[90%] my-10 m-auto">
+        <div className="mb-8">
+          <SectionTitle title="Suggested Product" />
+        </div>
+        {/* section title end  here  */}
+        {isLoading && (
+          <div className="m-auto grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 2xl:grid-cols-5 gap-5">
+            {Array.from({ length: 10 }).map((_, index) => (
+              <div
+                key={index}
+                className="h-[250px] bg-gray-300 animate-pulse rounded-xl"
+              />
+            ))}
+          </div>
+        )}
+        {!isLoading && !isError && (
+          <div className="m-auto grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 2xl:grid-cols-5 gap-5">
+            {products?.map((product: any) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
+        {/* <ProductCard key={products.id} product={products} /> */}
+      </div>
+    </div>
+  );
+};
+
+export default Page;

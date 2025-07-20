@@ -1,6 +1,7 @@
 import { AuthError, NotFoundError, ValidationError } from "@packages/errors";
 import { imagekit } from "@packages/libs/imagekit";
 import { prisma } from "@packages/libs/prisma";
+import { Prisma } from "@prisma/client";
 import { NextFunction, Request, Response } from "express";
 
 // get product categories
@@ -226,22 +227,6 @@ export const createProduct = async (
       images = [],
     } = req.body;
 
-    // 🔒 Check seller
-    // if (!req.seller?.id || !req.seller?.shop?.id) {
-    //   return next(new AuthError("Only seller can create products!"));
-    // }
-
-    // 🚫 Required fields check
-
-    if (!title) console.warn("Missing title");
-    if (!slug) console.warn("Missing slug");
-    if (!short_description) console.warn("Missing short_description");
-    if (!category) console.warn("Missing category");
-    if (!subCategory) console.warn("Missing subCategory");
-    if (!sale_price) console.warn("Missing sale_price");
-    if (!regular_price) console.warn("Missing regular_price");
-    if (!stock) console.warn("Missing stock");
-    if (!images || images.length === 0) console.warn("Missing images");
     if (
       !title ||
       !slug ||
@@ -251,20 +236,23 @@ export const createProduct = async (
       !sale_price ||
       !regular_price ||
       !stock ||
-      !images.length
+      images.length === 0
     ) {
       return next(new ValidationError("Missing required fields"));
     }
 
-    // 🧠 Check for existing slug
     const existing = await prisma.products.findUnique({ where: { slug } });
     if (existing) {
       return next(
         new ValidationError("Slug already exists! Please use a different slug.")
       );
     }
+    if (!images || !Array.isArray(images) || images.length === 0) {
+      return res.status(400).json({ message: "No images provided" });
+    } else {
+      console.log("images==========>", images);
+    }
 
-    // ✅ Create new product
     const newProduct = await prisma.products.create({
       data: {
         title,
@@ -273,32 +261,30 @@ export const createProduct = async (
         warranty,
         cashOnDelivery: cash_on_delivery,
         slug,
-        // shopId: req.seller.shop.id,
-        shopId: "60d21b4667d0d8992e610c85",
+        shopId: req.seller?.shop?.id,
         tags: Array.isArray(tags) ? tags : tags.split(","),
         brand,
         video_url,
         category,
         subCategory,
-        colors: colors || [],
-        discount_codes: discountCodes.map((codeId: string) => codeId),
-        sizes: sizes || [],
+        colors,
+        discount_codes: discountCodes,
+        sizes,
         stock: parseInt(stock),
         sale_price: parseFloat(sale_price),
         regular_price: parseFloat(regular_price),
-        custom_properties: customProperties || {},
-        custom_specifications: custom_specifications || {},
-        // images: {
-        //   create: images
-        //     .filter((img: any) => img && img.fileId && img.file_url)
-        //     .map((img: any) => ({
-        //       file_id: img.fileId,
-        //       url: img.file_url,
-        //     })),
-        // },
-
-        images: images.map((image: any) => image.file_url),
+        custom_properties: customProperties,
+        custom_specifications: custom_specifications,
+        images: {
+          create: images
+            .filter((img: any) => img && img.file_id && img.url)
+            .map((img: any) => ({
+              file_id: img.file_id,
+              url: img.url,
+            })),
+        },
       },
+      include: { images: true },
     });
 
     return res.status(201).json({
@@ -310,6 +296,7 @@ export const createProduct = async (
     next(error);
   }
 };
+
 export const getShopProducts = async (
   req: any,
   res: Response,
@@ -319,6 +306,9 @@ export const getShopProducts = async (
     const products = await prisma.products.findMany({
       where: {
         shopId: req?.seller?.shop?.id,
+      },
+      include: {
+        images: true, // ✅ include related images
       },
     });
 
@@ -349,51 +339,6 @@ export const getShopProducts = async (
 // };
 
 // delete product
-// export const deleteProduct = async (
-//   req: any,
-//   res: Response,
-//   next: NextFunction
-// ) => {
-//   try {
-//     const { productId } = req.params;
-//     const sellerId = req.seller?.shop?.id;
-
-//     const product = await prisma.products.findUnique({
-//       where: { id: productId },
-//       select: { id: true, shopId: true, isDeleted: true },
-//     });
-
-//     if (!product) {
-//       return next(new ValidationError("Product not found"));
-//     }
-
-//     if (product.shopId !== sellerId) {
-//       return next(new ValidationError("Unauthorized action"));
-//     }
-
-//     if (product.isDeleted) {
-//       return next(new ValidationError("Product is already deleted"));
-//     }
-
-//     const deletedProduct = await prisma.products.update({
-//       where: { id: productId },
-//       data: {
-//         isDeleted: true,
-//         deletedAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours later
-//       },
-//     });
-
-//     return res.status(200).json({
-//       message:
-//         "Product is scheduled for deletion in 24 hours. You can restore it within this time.",
-//       deletedAt: deletedProduct.deletedAt,
-//     });
-//   } catch (error) {
-//     return next(error);
-//   }
-// };
-
-// delete product (no seller validation)
 export const deleteProduct = async (
   req: any,
   res: Response,
@@ -401,14 +346,19 @@ export const deleteProduct = async (
 ) => {
   try {
     const { productId } = req.params;
+    const sellerId = req.seller?.shop?.id;
 
     const product = await prisma.products.findUnique({
       where: { id: productId },
-      select: { id: true, isDeleted: true },
+      select: { id: true, shopId: true, isDeleted: true },
     });
 
     if (!product) {
       return next(new ValidationError("Product not found"));
+    }
+
+    if (product.shopId !== sellerId) {
+      return next(new ValidationError("Unauthorized action"));
     }
 
     if (product.isDeleted) {
@@ -419,7 +369,7 @@ export const deleteProduct = async (
       where: { id: productId },
       data: {
         isDeleted: true,
-        deletedAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        deletedAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours later
       },
     });
 
@@ -432,6 +382,46 @@ export const deleteProduct = async (
     return next(error);
   }
 };
+
+// delete product (no seller validation)
+// export const deleteProduct = async (
+//   req: any,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const { productId } = req.params;
+
+//     const product = await prisma.products.findUnique({
+//       where: { id: productId },
+//       select: { id: true, isDeleted: true },
+//     });
+
+//     if (!product) {
+//       return next(new ValidationError("Product not found"));
+//     }
+
+//     if (product.isDeleted) {
+//       return next(new ValidationError("Product is already deleted"));
+//     }
+
+//     const deletedProduct = await prisma.products.update({
+//       where: { id: productId },
+//       data: {
+//         isDeleted: true,
+//         deletedAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+//       },
+//     });
+
+//     return res.status(200).json({
+//       message:
+//         "Product is scheduled for deletion in 24 hours. You can restore it within this time.",
+//       deletedAt: deletedProduct.deletedAt,
+//     });
+//   } catch (error) {
+//     return next(error);
+//   }
+// };
 
 export const restoreProduct = async (
   req: any,
@@ -464,5 +454,187 @@ export const restoreProduct = async (
     return res.status(200).json({ message: "Product successfully restored!" });
   } catch (error) {
     return res.status(500).json({ message: "Error restoring product", error });
+  }
+};
+
+// export const getAllProducts = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const page = parseInt(req.query.page as string) || 1;
+//     const limit = parseInt(req.query.limit as string) || 20;
+//     const skip = (page - 1) * limit;
+//     const type = req.query.type;
+
+//     const baseFilter = {
+//       OR: [{ starting_date: null }, { ending_date: null }],
+//     };
+
+//     const orderBy: Prisma.productsOrderByWithRelationInput =
+//       type === "latest"
+//         ? { createdAt: "desc" as Prisma.SortOrder }
+//         : { totalSales: "desc" as Prisma.SortOrder };
+
+//     const [products, total, top10Products] = await Promise.all([
+//       prisma.products.findMany({
+//         skip,
+//         take: limit,
+//         include: {
+//           images: true,
+//           shops: true,
+//         },
+//         where: baseFilter,
+//         orderBy,
+//       }),
+//       prisma.products.count({
+//         where: baseFilter,
+//       }),
+//       prisma.products.findMany({
+//         take: 10,
+//         orderBy: { totalSales: "desc" },
+//         include: { images: true },
+//       }),
+//       prisma.products.count({
+//         where: baseFilter,
+//       }),
+//       prisma.products.findMany({
+//         take: 10,
+//         where: baseFilter,
+//         orderBy,
+//       }),
+//     ]);
+
+//     res.status(200).json({
+//       products,
+//       top10By: type === "latest" ? "latest" : "topSales",
+//       top10Products,
+//       total,
+//       currentPage: page,
+//       totalPages: Math.ceil(total / limit),
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+// export const getAllProducts = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const page = parseInt(req.query.page as string) || 1;
+//     const limit = parseInt(req.query.limit as string) || 20;
+//     const skip = (page - 1) * limit;
+//     const type = req.query.type;
+
+//     const baseFilter: Prisma.productsWhereInput = {
+//       isDeleted: false,
+//       status: "Active",
+//     };
+
+//     const orderBy: Prisma.productsOrderByWithRelationInput =
+//       type === "latest" ? { createdAt: "desc" } : { totalSales: "desc" };
+
+//     const [products, total, top10Products] = await Promise.all([
+//       prisma.products.findMany({
+//         skip,
+//         take: limit,
+//         where: baseFilter,
+//         include: {
+//           images: true,
+//           shops: true,
+//         },
+//         orderBy,
+//       }),
+//       prisma.products.count({ where: baseFilter }),
+//       prisma.products.findMany({
+//         take: 10,
+//         where: baseFilter,
+//         orderBy: { totalSales: "desc" },
+//         include: { images: true },
+//       }),
+//     ]);
+
+//     res.status(200).json({
+//       products,
+//       top10By: type === "latest" ? "latest" : "topSales",
+//       top10Products,
+//       total,
+//       currentPage: page,
+//       totalPages: Math.ceil(total / limit),
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+export const getAllProducts = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // Pagination parameters
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
+
+    // Sorting type: 'latest' or default to top sales
+    const type = req.query.type;
+    const sortByLatest = type === "latest";
+
+    // Common filter for active, non-deleted products
+    const baseFilter: Prisma.productsWhereInput = {
+      isDeleted: false,
+      status: "Active",
+    };
+
+    // Sorting criteria
+    const orderBy: Prisma.productsOrderByWithRelationInput = sortByLatest
+      ? { createdAt: "desc" }
+      : { totalSales: "desc" };
+
+    // Fetch main product list, total count, and top 10 products concurrently
+    const [products, total, top10Products] = await Promise.all([
+      prisma.products.findMany({
+        skip,
+        take: limit,
+        where: baseFilter,
+        orderBy,
+        include: {
+          images: true, // ✅ Include image relations
+          shops: true, // ✅ Include shop details
+        },
+      }),
+      prisma.products.count({
+        where: baseFilter,
+      }),
+      prisma.products.findMany({
+        take: 10,
+        where: baseFilter,
+        orderBy: {
+          totalSales: "desc",
+        },
+        include: {
+          images: true, // ✅ Top 10 products with images
+        },
+      }),
+    ]);
+
+    // Send response
+    res.status(200).json({
+      products,
+      top10By: sortByLatest ? "latest" : "topSales",
+      top10Products,
+      total,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    console.error("Error in getAllProducts:", error);
+    next(error);
   }
 };
