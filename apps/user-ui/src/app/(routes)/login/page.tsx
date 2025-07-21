@@ -29,9 +29,13 @@ const Login = () => {
 
   const loginMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      const response = await axios.post("/your-login-endpoint", data, {
-        withCredentials: true,
-      });
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_SERVER_URI}/api/login-user`,
+        data,
+        {
+          withCredentials: true, // includes cookies in the request
+        }
+      );
       return response.data;
     },
     onSuccess: (data) => {
@@ -47,8 +51,11 @@ const Login = () => {
   });
 
   const onSubmit = (data: FormData) => {
-    console.log("Form submitted:", data);
-    // TODO: Replace with API call
+    // Reset server error before submitting
+    setServerError(null);
+    // Trigger the mutation to log in the user
+    loginMutation.mutate(data);
+  
   };
 
   return (

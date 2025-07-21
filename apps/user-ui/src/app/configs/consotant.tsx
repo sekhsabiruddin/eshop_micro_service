@@ -27,3 +27,6 @@ export const navItems: NavItemsTypes[] = [
     href: "/bcome-seller", // typo: should be "/become-seller" maybe?
   },
 ];
+
+
+

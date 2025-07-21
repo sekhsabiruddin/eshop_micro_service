@@ -33,7 +33,7 @@ export const userRegistration = async (
 
     await checkOtpRestrictions(email, next);
     await trackOtpRequests(email, next);
-    await sendOtp(name, email, "userRegistration");
+    await sendOtp(name, email, "user-activation.mail");
 
     // TODO: Create the user, send OTP, or continue flow
     res

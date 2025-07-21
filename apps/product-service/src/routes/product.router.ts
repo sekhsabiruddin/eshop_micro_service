@@ -8,8 +8,13 @@ import {
   getAllProducts,
   getCategories,
   getDiscountCodes,
+  getFilteredEvents,
+  getFilteredProducts,
+  getFilteredShops,
+  getProductDetails,
   getShopProducts,
   restoreProduct,
+  searchProducts,
   uploadProductImage,
 } from "../controllers/product.controllers";
 import isAuthenticated from "@packages/middleware/isAuthenticate";
@@ -29,4 +34,11 @@ router.delete("/delete-product-image", isAuthenticated, deleteProductImage);
 router.delete("/delete-product/:productId", deleteProduct);
 router.put("/restore-product/:productId", restoreProduct);
 router.get("/get-all-products", getAllProducts);
+router.get("/get-products/:slug", getProductDetails);
+
+router.get("/get-filtered-products", getFilteredProducts);
+router.get("/get-filtered-offers", getFilteredEvents);
+router.get("/get-filtered-shops", getFilteredShops);
+router.get("/search-products", searchProducts);
+
 export default router;
