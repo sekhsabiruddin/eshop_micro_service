@@ -1,5 +1,5 @@
-import { AuthError } from "@packages/errors";
 import { NextFunction, Response } from "express";
+import { AuthError } from "../errors";
 
 export const isSeller = (req: any, res: Response, next: NextFunction) => {
   console.log("req.role", req.role);

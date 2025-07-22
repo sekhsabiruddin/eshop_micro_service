@@ -21,7 +21,7 @@ const Signup = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
 
   // ✅ OTP screen control and resend timer
-  const [showOtp, setShowOtp] = useState(true);
+  const [showOtp, setShowOtp] = useState(false);
   const [canResend, setCanResend] = useState(true);
   const [timer, setTimer] = useState(60);
 
@@ -162,7 +162,7 @@ const Signup = () => {
           </div>
 
           {/* 🔤 Form Content */}
-          {showOtp ? (
+          {!showOtp ? (
             <form onSubmit={handleSubmit(onSubmit)}>
               {/* Name */}
               <label className="block text-gray-700 mb-1">Name</label>

@@ -930,64 +930,56 @@ export const searchProducts = async (
 };
 
 
+export const getAllEvents = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
 
-// export const topShops = async (
-//   req: Request,
-//   res: Response,
-//   next: NextFunction
-// ) => {
-//   try {
-//     // Aggregate total sales per shop from orders
-//     const topShopsData = await prisma.orders.groupBy({
-//       by: ["shopId"],
-//       _sum: {
-//         total: true,
-//       },
-//       orderBy: {
-//         _sum: {
-//           total: "desc",
-//         },
-//       },
-//       take: 10,
-//     });
+    const baseFilter = {
+      AND: [
+        { starting_date: { not: null } },
+        { ending_date: { not: null } }
+      ],
+    };
 
-//     const shopIds = topShopsData.map((item) => item.shopId);
+    const [events, total, top10BySales] = await Promise.all([
+      prisma.products.findMany({
+        skip,
+        take: limit,
+        where: baseFilter,
+        include: {
+          images: true,
+          shops: true,
+        },
+        orderBy: {
+          totalSales: "desc",
+        },
+      }),
+      prisma.products.count({ where: baseFilter }),
+      prisma.products.findMany({
+        where: baseFilter,
+        take: 10,
+        orderBy: {
+          totalSales: "desc",
+        },
+      }),
+    ]);
 
-//     const shops = await prisma.shops.findMany({
-//       where: {
-//         id: {
-//           in: shopIds,
-//         },
-//       },
-//       select: {
-//         id: true,
-//         name: true,
-//         avatar: true,
-//         coverBanner: true,
-//         address: true,
-//         ratings: true,
-//         // followers: true,
-//         category: true,
-//       },
-//     });
+    res.status(200).json({
+      events,
+      top10BySales,
+      total,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-//     // Merge sales with shop data
-//     const enrichedShops = shops.map((shop) => {
-//       const salesData = topShopsData.find((s) => s.shopId === shop.id);
-//       return {
-//         ...shop,
-//         totalSales: salesData?._sum.total ?? 0,
-//       };
-//     });
-
-//     const top10Shops = enrichedShops
-//       .sort((a, b) => b.totalSales - a.totalSales)
-//       .slice(0, 10);
-
-//     return res.status(200).json({ shops: top10Shops });
-//   } catch (error) {
-//     console.error("Error fetching top shops:", error);
-//     return next(error);
-//   }
-// };
 

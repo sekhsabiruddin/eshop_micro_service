@@ -5,6 +5,7 @@ import {
   deleteDiscountCode,
   deleteProduct,
   deleteProductImage,
+  getAllEvents,
   getAllProducts,
   getCategories,
   getDiscountCodes,
@@ -40,5 +41,6 @@ router.get("/get-filtered-products", getFilteredProducts);
 router.get("/get-filtered-offers", getFilteredEvents);
 router.get("/get-filtered-shops", getFilteredShops);
 router.get("/search-products", searchProducts);
+router.get("/get-all-events", getAllEvents);
 
 export default router;
