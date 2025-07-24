@@ -641,3 +641,130 @@ export const getUserAddresses = async (
     next(error);
   }
 };
+
+export const updateUserPassword = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user?.id;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    // 1) All fields present?
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return next(new ValidationError("All fields are required"));
+    }
+
+    // 2) New & confirm match?
+    if (newPassword !== confirmPassword) {
+      return next(new ValidationError("New passwords do not match"));
+    }
+
+    // 3) New ≠ current?
+    if (currentPassword === newPassword) {
+      return next(
+        new ValidationError(
+          "New password cannot be the same as the current password"
+        )
+      );
+    }
+
+    // 4) Load user
+    const user = await prisma.users.findUnique({ where: { id: userId } });
+    if (!user || !user.password) {
+      return next(new AuthError("User not found or password not set"));
+    }
+
+    // 5) Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return next(new AuthError("Current password is incorrect"));
+    }
+
+    // 6) Hash & store the new one
+    const hashed = await bcrypt.hash(newPassword, 12);
+    await prisma.users.update({
+      where: { id: userId },
+      data: { password: hashed },
+    });
+
+    // 7) Success
+    return res.status(200).json({ message: "Password updated successfully" });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const loginAdmin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return next(new ValidationError("Email and password are required!"));
+    }
+
+    const user = await prisma.users.findUnique({ where: { email } });
+
+    if (!user) {
+      return next(new AuthError("User doesn't exist!"));
+    }
+
+    // Verify password
+    const isMatch = await bcrypt.compare(password, user.password!);
+    if (!isMatch) {
+      return next(new AuthError("Invalid email or password"));
+    }
+
+    const isAdmin = user.role === "admin";
+
+    if (!isAdmin) {
+      sendLog({
+        message: `Admin login failed for ${email} — not an admin`,
+        source: "auth-service",
+      });
+      return next(new AuthError("Invalid access!"));
+    }
+
+    sendLog({
+      type: "success",
+      message: `Admin login successful: ${email}`,
+      source: "auth-service",
+    });
+
+    res.clearCookie("seller-access-token");
+    res.clearCookie("seller-refresh-token");
+
+    // Generate tokens
+    const accessToken = jwt.sign(
+      { id: user.id, role: "admin" },
+      process.env.ACCESS_TOKEN_SECRET as string,
+      { expiresIn: "15m" }
+    );
+
+    const refreshToken = jwt.sign(
+      { id: user.id, role: "admin" },
+      process.env.REFRESH_TOKEN_SECRET as string,
+      { expiresIn: "7d" }
+    );
+
+    // Store tokens in httpOnly cookies
+    setCookie(res, "refresh_token", refreshToken);
+    setCookie(res, "access_token", accessToken);
+
+    return res.status(200).json({
+      message: "Login successful!",
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+};

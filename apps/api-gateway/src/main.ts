@@ -46,10 +46,12 @@ app.use(limiter);
 
 // Static assets
 app.use("/assets", express.static(path.join(__dirname, "assets")));
-
-
+app.use("/chatting",proxy("http://localhost:6006"));
+app.use("/logger", proxy("http://localhost:6008"));
+app.use("/recommend", proxy("http://localhost:6007"));
+app.use("/admin", proxy("http://localhost:6005"));
+app.use("/order", proxy("http://localhost:6004"));
 app.use("/product", proxy("http://localhost:6002"));
-
 app.use("/", proxy("http://localhost:6001"));
 
 // Start server

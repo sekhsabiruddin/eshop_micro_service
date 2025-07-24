@@ -1,0 +1,15 @@
+nx g @nx/express:app chatting-service --directory=apps/chatting-service --e2eTestRunner=none
+
+model notifications {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  creatorId      String   @db.ObjectId
+  receiverId     String   @db.ObjectId
+  redirect_link  String?  // optional
+  title          String
+  message        String
+  status         String   @default("Unread")
+  cratedAt       DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+

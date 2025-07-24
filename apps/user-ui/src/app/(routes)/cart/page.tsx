@@ -14,17 +14,20 @@ import React, { useEffect, useState } from "react";
 const CartPage = () => {
   const router = useRouter();
   const { user } = useUser();
-  const [discountedProductId, setDiscountedProductId] = useState("");
   const location = useLocationTracking();
   const deviceInfo = useDeviceTracking();
-
   const cart = useStore((state: any) => state.cart);
   const removeFromCart = useStore((state: any) => state.removeFromCart);
-
-  const [loading, setLoading] = useState(false);
+  const [discountedProductId, setDiscountedProductId] = useState("");
   const [discountPercent, setDiscountPercent] = useState(0);
+  const [discountAmount, setDiscountAmount] = useState(0);
   const [couponCode, setCouponCode] = useState("");
+  const [storedCouponCode, setStoredCouponCode] = useState("");
+  const [Error, setError] = useState("");
+  const [isApplying, setIsApplying] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const decreaseQuantity = (id: string) => {
     useStore.setState((state: any) => ({
       cart: state.cart.map((item: any) =>
@@ -48,7 +51,7 @@ const CartPage = () => {
   const removeItem = (id: string) => {
     removeFromCart(id, user, location, deviceInfo);
   };
-  const discountAmount = cart.reduce((acc: number, item: any) => {
+  const discountAmounts = cart.reduce((acc: number, item: any) => {
     if (item.id === discountedProductId) {
       const originalPrice = item.sale_price;
       const discounted = (originalPrice * (100 - discountPercent)) / 100;
@@ -77,6 +80,77 @@ const CartPage = () => {
       }
     }
   }, [addresses, selectedAddressId]);
+
+  const couponCodeApplyHandler = async () => {
+    // reset any previous error
+    setError("");
+
+    // client‑side: coupon cannot be empty
+    if (!couponCode.trim()) {
+      setError("Coupon code is required!");
+      return;
+    }
+
+    try {
+      // call your backend to verify the coupon
+      const res = await axiosInstance.put("/order/api/verify‑coupon", {
+        couponCode: couponCode.trim(),
+        cart, // assuming you pass the current cart state
+      });
+
+      // if valid, stash the coupon and its discount
+      if (res.data.valid) {
+        setStoredCouponCode(couponCode.trim());
+        setDiscountAmount(parseFloat(res.data.discountAmount));
+        setDiscountPercent(res.data.discount);
+        setDiscountedProductId(res.data.discountedProductId);
+        // clear the input field
+        setCouponCode("");
+      } else {
+        // invalid or not applicable
+        setDiscountAmount(0);
+        setDiscountPercent(0);
+        setDiscountedProductId("");
+        setError(res.data.message || "Coupon not valid for any items in cart.");
+      }
+    } catch (error: any) {
+      // network/server error
+      setDiscountAmount(0);
+      setDiscountPercent(0);
+      setDiscountedProductId("");
+      setError(
+        error?.response?.data?.message ||
+          "Failed to verify coupon. Please try again."
+      );
+    }
+  };
+
+  const createPaymentSession = async () => {
+    setLoading(true);
+    try {
+      const res = await axiosInstance.post(
+        "/order/api/create-payment-session",
+        {
+          cart,
+          selectedAddressId,
+          coupon: {
+            code: storedCouponCode,
+            discountAmount,
+            discountPercent,
+            discountedProductId,
+          },
+        }
+      );
+
+      const sessionId = res.data.sessionId;
+      router.push(`/checkout?sessionId=${sessionId}`);
+    } catch (error: any) {
+      console.error("Failed to create payment session", error);
+      // you might want to surface an error UI here
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="w-full bg-white">

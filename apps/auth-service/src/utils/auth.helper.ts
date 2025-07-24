@@ -49,24 +49,20 @@ export const checkOtpRestrictions = async (
   const otpCooldownKey = `otp_cooldown:${email}`;
 
   if (await redis.get(otpLockKey)) {
-    return next(
-      new ValidationError(
-        "Account locked due to multiple failed attempts! Try again after 30 minutes."
-      )
+    throw new ValidationError(
+      "Account locked due to multiple failed attempts! Try again after 30 minutes."
     );
   }
 
   if (await redis.get(otpSpamKey)) {
-    return next(
-      new ValidationError(
-        "Too many OTP requests. Please wait and try again later."
-      )
+    throw new ValidationError(
+      "Too many OTP requests. Please wait and try again later."
     );
   }
 
   if (await redis.get(otpCooldownKey)) {
-    return next(
-      new ValidationError("Please wait 1 minute before requesting a new OTP!")
+    throw new ValidationError(
+      "Please wait 1 minute before requesting a new OTP!"
     );
   }
 };

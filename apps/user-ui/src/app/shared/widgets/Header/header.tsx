@@ -30,17 +30,15 @@ function Header() {
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-2">
             {!isLoading && user ? (
-              <>
+              <div className="border-2 border-red-500">
                 <Link href="/profile">
                   <User />
-                </Link>
-                <Link href="/login">
                   <span className="block font-medium">Hello,</span>
                   <span className="font-semibold">
                     {user?.name?.split(" ")[0]}
                   </span>
                 </Link>
-              </>
+              </div>
             ) : (
               <>
                 <Link

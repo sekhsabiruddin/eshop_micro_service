@@ -15,6 +15,7 @@ import {
   getUserAddresses,
   addUserAddress,
   deleteUserAddress,
+  loginAdmin,
 } from "../controller/auth.conmtroller";
 // import { resetUserPassword } from "../utils/auth.helper";
 import isAuthenticated from "@packages/middleware/isAuthenticate";
@@ -45,5 +46,6 @@ router.get("/logged-in-seller", isAuthenticated, isSeller, getSeller);
 router.get("/shipping-addresses", isAuthenticated, getUserAddresses);
 router.post("/add-address", isAuthenticated, addUserAddress);
 router.delete("/delete-address/:addressId", isAuthenticated, deleteUserAddress);
+router.post("/login-admin", loginAdmin);
 
 export default router;

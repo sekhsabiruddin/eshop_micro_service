@@ -1,0 +1,29 @@
+{
+  "name": "recommend-service",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "targets": {
+      "serve": {
+        "continuous": true,
+        "executor": "@nx/js:node",
+        "defaultConfiguration": "development",
+        "dependsOn": [
+          "build"
+        ],
+        "options": {
+          "buildTarget": "recommend-service:build",
+          "runBuildTargetDependencies": false
+        },
+        "configurations": {
+          "development": {
+            "buildTarget": "recommend-service:build:development"
+          },
+          "production": {
+            "buildTarget": "recommend-service:build:production"
+          }
+        }
+      }
+    }
+  }
+}
